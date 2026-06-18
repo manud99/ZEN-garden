@@ -12,7 +12,7 @@ import warnings
 import zipfile
 from collections import defaultdict
 from copy import deepcopy
-from importlib.metadata import metadata
+from importlib.metadata import metadata, version
 from pathlib import Path
 
 import linopy as lp
@@ -23,6 +23,8 @@ import xarray as xr
 from ordered_set import OrderedSet
 
 from zen_garden.default_config import Subscriptable
+
+logger = logging.getLogger(__name__)
 
 
 def setup_logger(level=logging.INFO):
@@ -37,6 +39,11 @@ def setup_logger(level=logging.INFO):
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     logging.captureWarnings(True)
+
+    logger.info(f"Running ZEN-garden version: {version('zen-garden')}")
+
+    # prevent double printing
+    logging.propagate = False
 
 
 def get_inheritors(klass):
@@ -126,7 +133,6 @@ def download_example_dataset(dataset):
 
     # search for example within ZIP file
     for file in zenodo_zip.filelist:
-
         # download all files in dataset example
         if file.filename.startswith(example_path):
             filename_ending = file.filename.split(example_path)[1]
@@ -168,7 +174,7 @@ def download_example_dataset(dataset):
         )
     if not config_found:
         raise FileNotFoundError(
-            "Config.json file could not be downloaded from the dataset " "examples!"
+            "Config.json file could not be downloaded from the dataset examples!"
         )
     if not notebook_found:
         warnings.warn(
@@ -1227,8 +1233,7 @@ class InputDataChecks:
             if carrier not in self.optimization_setup.paths["set_carriers"].keys():
                 # raise error if carrier is not in input data
                 raise FileNotFoundError(
-                    f"Carrier {carrier} selected in config does not exist in"
-                    "input data"
+                    f"Carrier {carrier} selected in config does not exist ininput data"
                 )
             elif (
                 "attributes.json"
@@ -1415,7 +1420,7 @@ class StringUtils:
         """
         scenario_string = ScenarioUtils.scenario_string(scenario)
         if len(steps_horizon) == 1:
-            logging.info(
+            logger.info(
                 f"\n--- Conduct optimization for perfect foresight "
                 f"{scenario_string}--- \n"
             )
@@ -1423,7 +1428,7 @@ class StringUtils:
             corresponding_year = (
                 system.reference_year + step * system.interval_between_years
             )
-            logging.info(
+            logger.info(
                 "\n--- Conduct optimization for rolling horizon step for "
                 f"{corresponding_year} ({steps_horizon.index(step) + 1} of "
                 f"{len(steps_horizon)}) {scenario_string}--- \n"
@@ -1584,14 +1589,14 @@ class ScenarioUtils:
                             os.path.isdir(sub_folder_path)
                             and sub_folder not in sub_folders
                         ):
-                            logging.info(f"Removing sub-scenario {sub_folder}")
+                            logger.info(f"Removing sub-scenario {sub_folder}")
                             shutil.rmtree(sub_folder_path, ignore_errors=True)
                         # the time steps dict
                         if (
                             sub_folder.startswith("dict_all_sequence_time_steps")
                             and sub_folder not in sub_folders
                         ):
-                            logging.info(f"Removing time steps dict {sub_folder}")
+                            logger.info(f"Removing time steps dict {sub_folder}")
                             os.remove(sub_folder_path)
 
     @staticmethod
@@ -1637,7 +1642,7 @@ class ScenarioUtils:
                     job_index = [job_index]
                 else:
                     job_index = list(job_index)
-                logging.info(f"Running scenarios with job indices: {job_index}")
+                logger.info(f"Running scenarios with job indices: {job_index}")
                 # reduce the scenario and element to a single one
                 scenarios = [list(config.scenarios.keys())[jx] for jx in job_index]
                 elements = [list(config.scenarios.values())[jx] for jx in job_index]
