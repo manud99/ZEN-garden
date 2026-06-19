@@ -24,24 +24,22 @@ class Element:
     # set label
     label = "set_elements"
 
-    def __init__(self, element: str, optimization_setup):
+    def __init__(self, element: str, context):
         """Initialization of an element.
 
         :param element: element that is added to the model
-        :param optimization_setup: The OptimizationSetup the element is part of
+        :param context: Shared model context
         """
         # set attributes
         self.name = element
         self._name = element
-        # optimization setup
-        self.optimization_setup = optimization_setup
-        self.context = getattr(optimization_setup, "context", None)
-        if self.context is None:
-            raise AttributeError("Optimization setup does not provide a model context")
+        # keep the legacy attribute name as a compatibility alias for the context
+        self.context = context
+        self.optimization_setup = context
+        if self.context.energy_system is None:
+            raise AttributeError("Model context does not provide an energy system")
         # energy system
-        self.energy_system = (
-            self.context.energy_system or optimization_setup.energy_system
-        )
+        self.energy_system = self.context.energy_system
         # set if aggregated
         self.aggregated = False
         # get input path

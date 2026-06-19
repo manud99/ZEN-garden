@@ -22,13 +22,13 @@ class StorageTechnology(Technology):
     label = "set_storage_technologies"
     location_type = "set_nodes"
 
-    def __init__(self, tech, optimization_setup):
+    def __init__(self, tech, context):
         """Init storage technology object.
 
         :param tech: name of added technology
-        :param optimization_setup: The OptimizationSetup the element is part of
+        :param context: Shared model context
         """
-        super().__init__(tech, optimization_setup)
+        super().__init__(tech, context)
         # store carriers of storage technology
         self.store_carriers()
 

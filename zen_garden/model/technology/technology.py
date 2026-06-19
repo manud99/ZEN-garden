@@ -25,13 +25,13 @@ class Technology(Element):
     label = "set_technologies"
     location_type = None
 
-    def __init__(self, technology: str, optimization_setup):
+    def __init__(self, technology: str, context):
         """Init generic technology object.
 
         :param technology: technology that is added to the model
-        :param optimization_setup: The OptimizationSetup the element is part of
+        :param context: Shared model context
         """
-        super().__init__(technology, optimization_setup)
+        super().__init__(technology, context)
 
     def store_carriers(self):
         """Retrieves and stores information on reference."""

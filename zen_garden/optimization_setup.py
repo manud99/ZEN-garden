@@ -115,6 +115,7 @@ class OptimizationSetup(object):
         self.energy_system = EnergySystem(optimization_setup=self)
         self.context = self.context.with_updates(energy_system=self.energy_system)
         self.energy_system.context = self.context
+        self.energy_system.data_input.context = self.context
 
         # add Elements to optimization
         self.add_elements()
@@ -218,7 +219,7 @@ class OptimizationSetup(object):
             name: Name of the element
         """
         # get the instance
-        instance = element_class(name, self)
+        instance = element_class(name, self.context)
         # add to class specific list
         self.dict_elements[element_class.__name__].append(instance)
         # Add the instance to all parents as well

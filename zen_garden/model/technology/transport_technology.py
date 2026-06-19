@@ -18,13 +18,13 @@ class TransportTechnology(Technology):
     label = "set_transport_technologies"
     location_type = "set_edges"
 
-    def __init__(self, tech: str, optimization_setup):
+    def __init__(self, tech: str, context):
         """Init transport technology object.
 
         :param tech: name of added technology
-        :param optimization_setup: The OptimizationSetup the element is part of
+        :param context: Shared model context
         """
-        super().__init__(tech, optimization_setup)
+        super().__init__(tech, context)
         # dict of reversed edges
         self.dict_reversed_edges = {}
         # store carriers of transport technology
@@ -99,7 +99,7 @@ class TransportTechnology(Technology):
     def get_capex_transport(self):
         """Get capex of transport technology."""
         # check if there are separate capex for capacity and distance
-        if self.optimization_setup.system.double_capex_transport:
+        if self.context.system.double_capex_transport:
             # both capex terms must be specified
             self.capex_specific_transport = self.data_input.extract_input_data(
                 "capex_specific_transport",
@@ -195,7 +195,7 @@ class TransportTechnology(Technology):
             self.capex_per_distance_transport[index[0]].iloc[0]
         ):
             return 0
-        elif self.energy_system.system.double_capex_transport and capacity != 0:
+        elif self.context.system.double_capex_transport and capacity != 0:
             return (
                 self.capex_specific_transport[index[0]].iloc[0] * capacity
                 + self.capex_per_distance_transport[index[0]].iloc[0]

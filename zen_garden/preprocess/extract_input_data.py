@@ -471,10 +471,8 @@ class DataInput:
         :return: attribute value, attribute unit
         """
         if attribute_name not in attribute_dict:
-            parameter_change_log = (
-                self.context.parameter_change_log
-                if self.context is not None
-                else self.energy_system.optimization_setup.parameter_change_log
+            parameter_change_log = getattr(self.context, "parameter_change_log", None) or (
+                self.energy_system.optimization_setup.parameter_change_log
             )
 
             # The attribute is not found because of an update
@@ -556,6 +554,9 @@ class DataInput:
         :param subelement: string specifying dependent element
         :param df_output_generic: original/generic time series data (base case)
         """
+        target_year_specific_ts = getattr(self.context, "year_specific_ts", None) or (
+            self.optimization_setup.year_specific_ts
+        )
         # years of optimization model
         years = [
             str(year)
@@ -593,20 +594,10 @@ class DataInput:
                             time_steps,
                         )
                     try:
-                        target_year_specific_ts = (
-                            self.context.year_specific_ts
-                            if self.context is not None
-                            else self.optimization_setup.year_specific_ts
-                        )
                         target_year_specific_ts[i][(self.element._name, file_name)] = (
                             df_output_specific * scenario_factor
                         )
                     except Exception:
-                        target_year_specific_ts = (
-                            self.context.year_specific_ts
-                            if self.context is not None
-                            else self.optimization_setup.year_specific_ts
-                        )
                         target_year_specific_ts[i] = {}
                         target_year_specific_ts[i][(self.element._name, file_name)] = (
                             df_output_specific * scenario_factor
@@ -707,10 +698,8 @@ class DataInput:
                 return set_nodes_config
         else:
             set_edges_input = self.read_input_csv("set_edges")
-            input_checks = (
-                self.context.input_data_checks
-                if self.context is not None
-                else self.energy_system.optimization_setup.input_data_checks
+            input_checks = getattr(self.context, "input_data_checks", None) or (
+                self.energy_system.optimization_setup.input_data_checks
             )
             input_checks.check_single_directed_edges(set_edges_input=set_edges_input)
             if set_edges_input is not None:

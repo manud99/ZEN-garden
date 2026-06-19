@@ -27,13 +27,13 @@ class ConversionTechnology(Technology):
     label = "set_conversion_technologies"
     location_type = "set_nodes"
 
-    def __init__(self, tech, optimization_setup):
+    def __init__(self, tech, context):
         """Init conversion technology object.
 
         :param tech: name of added technology
-        :param optimization_setup: The OptimizationSetup the element is part of
+        :param context: Shared model context
         """
-        super().__init__(tech, optimization_setup)
+        super().__init__(tech, context)
         # store carriers of conversion technology
         self.store_carriers()
 
@@ -53,7 +53,7 @@ class ConversionTechnology(Technology):
         )
         # check if reference carrier in input and output carriers and
         #   set technology to correspondent carrier
-        self.optimization_setup.input_data_checks.check_carrier_configuration(
+        self.context.input_data_checks.check_carrier_configuration(
             input_carrier=self.input_carrier,
             output_carrier=self.output_carrier,
             reference_carrier=self.reference_carrier,

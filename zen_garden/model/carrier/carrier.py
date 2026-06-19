@@ -24,13 +24,13 @@ class Carrier(Element):
     # empty list of elements
     list_of_elements = []
 
-    def __init__(self, carrier: str, optimization_setup):
+    def __init__(self, carrier: str, context):
         """Initialization of a generic carrier object.
 
         :param carrier: carrier that is added to the model
-        :param optimization_setup: The OptimizationSetup the element is part of
+        :param context: Shared model context
         """
-        super().__init__(carrier, optimization_setup)
+        super().__init__(carrier, context)
 
     def store_input_data(self):
         """Retrieves and stores input data for element as attributes. Each Child class
