@@ -1,7 +1,6 @@
 """Functions to extract the input data from the provided input files."""
 
 import copy
-import json
 import logging
 import os
 import warnings
@@ -9,6 +8,9 @@ import warnings
 import numpy as np
 import pandas as pd
 from scipy.stats import linregress
+
+from zen_garden.preprocess.input_attribute_resolver import InputAttributeResolver
+from zen_garden.preprocess.input_repository import InputRepository
 
 
 class DataInput:
@@ -44,10 +46,14 @@ class DataInput:
         self.context = context or getattr(optimization_setup, "context", None)
         # extract folder path
         self.folder_path = self.element.input_path
+        self.repository = InputRepository(self.folder_path)
         # get names of indices
         self.index_names = self.analysis.header_data_inputs
         # load attributes file
-        self.attribute_dict = self.load_attribute_file()
+        self.attribute_dict = self.repository.load_attribute_file()
+        self.attribute_resolver = InputAttributeResolver(
+            self.element, self.context, self.repository, self.attribute_dict
+        )
         # optimization setup
         self.optimization_setup = optimization_setup
 
@@ -274,26 +280,7 @@ class DataInput:
         :return: df_input: pd.DataFrame with input data
         """
         # append .csv suffix
-        input_file_name += ".csv"
-
-        # select data
-        file_names = os.listdir(self.folder_path)
-        if input_file_name in file_names:
-            df_input = pd.read_csv(
-                os.path.join(self.folder_path, input_file_name),
-                header=0,
-                index_col=None,
-            )
-            # check for header name duplicates (pd.read_csv() adds a dot and a
-            # number to duplicate headers)
-            if any("." in col for col in df_input.columns):
-                raise AssertionError(
-                    f"The input data file {input_file_name} at "
-                    f"{self.folder_path} contains two identical header names."
-                )
-            return df_input
-        else:
-            return None
+        return self.repository.read_csv(input_file_name)
 
     def read_input_json(self, input_file_name):
         """Reads json input data and returns a dict.
@@ -301,34 +288,14 @@ class DataInput:
         :param input_file_name: name of selected file
         :return: data: dict with input data
         """
-        input_file_name += ".json"
-
-        file_names = os.listdir(self.folder_path)
-        if input_file_name in file_names:
-            with open(os.path.join(self.folder_path, input_file_name), "r") as file:
-                data = json.load(file)
-            return data
-        else:
-            return None
+        return self.repository.read_json(input_file_name)
 
     def load_attribute_file(self, filename="attributes"):
         """Loads attribute file. Either as csv (old version) or json (new version)
         :param filename: name of attributes file, default is 'attributes'
         :return: attribute_dict.
         """
-        if os.path.exists(self.folder_path / f"{filename}.json"):
-            attribute_dict = self._load_attribute_file_json(filename=filename)
-        # extract csv
-        elif os.path.exists(self.folder_path / f"{filename}.csv"):
-            raise NotImplementedError(
-                f"The .csv format for attributes is deprecated "
-                f"({filename} of {self.element.name}). Use .json instead."
-            )
-        else:
-            raise FileNotFoundError(
-                f"Attributes file does not exist for {self.element.name}"
-            )
-        return attribute_dict
+        return self.repository.load_attribute_file(filename)
 
     def _load_attribute_file_json(self, filename):
         """Loads json attributes file.
@@ -336,30 +303,7 @@ class DataInput:
         :param filename:
         :return: attributes
         """
-        file_path = self.folder_path / f"{filename}.json"
-        with open(file_path, "r") as file:
-            data = json.load(file)
-        attribute_dict = {}
-        if isinstance(data, list):
-            warnings.warn(
-                "The list format in attributes.json [{...}] is deprecated. "
-                "Use a dict format instead {...}.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            for item in data:
-                for k, v in item.items():
-                    if isinstance(v, list):
-                        attribute_dict[k] = {sk: sv for d in v for sk, sv in d.items()}
-                    else:
-                        attribute_dict[k] = v
-        else:
-            for k, v in data.items():
-                if isinstance(v, list):
-                    attribute_dict[k] = {sk: sv for d in v for sk, sv in d.items()}
-                else:
-                    attribute_dict[k] = v
-        return attribute_dict
+        return self.repository._load_attribute_file_json(filename)
 
     def get_attribute_dict(self, attribute_name):
         """Get attribute dict and factor for attribute.
@@ -368,18 +312,7 @@ class DataInput:
         :return: attribute_dict: attribute dict
         :return: factor: factor for attribute
         """
-        if self.scenario_dict is not None:
-            filename, factor = self.scenario_dict.get_default(
-                self.element.name, attribute_name
-            )
-        else:
-            filename = "attributes"
-            factor = 1
-        if filename != "attributes":
-            attribute_dict = self.load_attribute_file(filename)
-        else:
-            attribute_dict = self.attribute_dict
-        return attribute_dict, factor
+        return self.attribute_resolver.get_attribute_dict(attribute_name)
 
     def extract_attribute(
         self, attribute_name, unit_category, return_unit=False, subelement=None
@@ -394,9 +327,13 @@ class DataInput:
         :return: attribute value and multiplier
         :return: unit of attribute
         """
-        attribute_dict, factor = self.get_attribute_dict(attribute_name)
-        attribute_value, attribute_unit = self._extract_attribute_value(
-            attribute_name, attribute_dict
+        attribute_dict, factor = self.attribute_resolver.get_attribute_dict(
+            attribute_name
+        )
+        attribute_value, attribute_unit = (
+            self.attribute_resolver.extract_attribute_value(
+                attribute_name, attribute_dict
+            )
         )
         if subelement is not None:
             assert (
@@ -470,69 +407,9 @@ class DataInput:
         :param attribute_dict: name of selected attribute
         :return: attribute value, attribute unit
         """
-        if attribute_name not in attribute_dict:
-            parameter_change_log = getattr(self.context, "parameter_change_log", None) or (
-                self.energy_system.optimization_setup.parameter_change_log
-            )
-
-            # The attribute is not found because of an update
-            if attribute_name in parameter_change_log:
-                # CASE 1: There is a new attribute
-                if isinstance(parameter_change_log[attribute_name], dict):
-                    missing_attribute = parameter_change_log[attribute_name]
-
-                    if missing_attribute["default_value"] not in [0, 1, "inf"]:
-                        raise AttributeError(
-                            f"Default value of attribute {attribute_name} must "
-                            f"be 0 , 1, or 'inf' but is "
-                            f"{missing_attribute['default_value']}"
-                        )
-
-                    attribute_dict[attribute_name] = {
-                        "default_value": missing_attribute["default_value"],
-                        "unit": attribute_dict[missing_attribute["unit"]]["unit"],
-                    }
-
-                    warnings.warn(
-                        f"\nAttribute {attribute_name} is not yet included in "
-                        f"your model. Automatic assign default_value:"
-                        f"{attribute_dict[attribute_name]['default_value']}, "
-                        f"unit: {attribute_dict[attribute_name]['unit']}\n",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-
-                # CASE 2: The attribute has a new name
-                else:
-                    old_name = parameter_change_log[attribute_name]
-                    attribute_dict[attribute_name] = attribute_dict.pop(old_name)
-
-                    warnings.warn(
-                        f"Attribute {old_name} is now called {attribute_name}",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-
-            else:
-                raise AttributeError(
-                    f"Attribute {attribute_name} does not exist in input data "
-                    f"of {self.element.name}"
-                )
-        try:
-            attribute_value = float(attribute_dict[attribute_name]["default_value"])
-            attribute_unit = attribute_dict[attribute_name]["unit"]
-        # for string attributes
-        except ValueError:
-            attribute_value = attribute_dict[attribute_name]["default_value"]
-            attribute_unit = attribute_dict[attribute_name]["unit"]
-        # for list of attributes
-        except (TypeError, KeyError):
-            if "default_value" in attribute_dict[attribute_name]:
-                attribute_value = attribute_dict[attribute_name]["default_value"]
-            else:
-                attribute_value = attribute_dict[attribute_name]
-            attribute_unit = None
-        return attribute_value, attribute_unit
+        return self.attribute_resolver.extract_attribute_value(
+            attribute_name, attribute_dict
+        )
 
     def extract_year_specific_ts(
         self,
