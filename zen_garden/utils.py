@@ -616,10 +616,9 @@ class ScenarioDict(dict):
         :param optimization_setup: The optimization setup corresponding to the scenario
         :param paths: The paths to the elements
         """
-        # avoid circular imports
-        from . import inheritors
-
-        self.element_classes = reversed(inheritors.copy())
+        self.element_classes = reversed(
+            list(optimization_setup.dict_element_classes.values())
+        )
 
         # set the attributes and expand the dict
         self.system = optimization_setup.system

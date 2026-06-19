@@ -16,6 +16,7 @@ import linopy as lp
 import numpy as np
 import pandas as pd
 
+from zen_garden.bootstrapper import ModelBootstrapper
 from zen_garden.model import (
     Constraint,
     Element,
@@ -65,9 +66,15 @@ class OptimizationSetup(object):
         self.solver = copy.deepcopy(config.solver)
         self.input_data_checks = input_data_checks
         self.input_data_checks.optimization_setup = self
-        # create a dictionary with the paths to access the model inputs
-        # check if input data exists
-        self.create_paths()
+        self.bootstrapper = ModelBootstrapper(
+            self.analysis,
+            self.system,
+            self.input_data_checks,
+            self.dict_element_classes,
+        )
+        self.path_data = self.bootstrapper.path_data
+        self.paths = self.bootstrapper.paths
+        self.element_list = self.bootstrapper.element_list
         # dict to update elements according to scenario
         self.scenario_dict = ScenarioDict(scenario_dict, self, self.paths)
         # check if all needed data inputs for the chosen technologies exist
@@ -87,20 +94,6 @@ class OptimizationSetup(object):
 
         # initiate dictionary for storing extra year data
         self.year_specific_ts = {}
-
-        # sorted list of class names
-        element_classes = self.dict_element_classes.keys()
-        carrier_classes = [
-            element_name
-            for element_name in element_classes
-            if "Carrier" in element_name
-        ]
-        technology_classes = [
-            element_name
-            for element_name in element_classes
-            if "Technology" in element_name
-        ]
-        self.element_list = technology_classes + carrier_classes
 
         # step of optimization horizon
         self.step_horizon = 0
@@ -134,85 +127,6 @@ class OptimizationSetup(object):
         self.time_series_aggregation = TimeSeriesAggregation(
             energy_system=self.energy_system
         )
-
-    def create_paths(self):
-        """This method creates a dictionary with the paths of the data split
-        by carriers, networks, technologies.
-        """
-        ## General Paths
-        # define path to access dataset related to the current analysis
-        self.path_data = self.analysis.dataset
-        assert os.path.exists(
-            self.path_data
-        ), f"Folder for input data {self.analysis.dataset} does not exist!"
-        self.input_data_checks.check_primary_folder_structure()
-        self.paths = dict()
-        # create a dictionary with the keys based on the folders in path_data
-        for folder_name in next(os.walk(self.path_data))[1]:
-            self.paths[folder_name] = dict()
-            self.paths[folder_name]["folder"] = os.path.join(
-                self.path_data, folder_name
-            )
-        # add element paths and their file paths
-        stack = [self.analysis.subsets]
-        while stack:
-            cur_dict = stack.pop()
-            for set_name, subsets in cur_dict.items():
-                path = self.paths[set_name]["folder"]
-                if isinstance(subsets, dict):
-                    stack.append(subsets)
-                    self.add_folder_paths(set_name, path, list(subsets.keys()))
-                else:
-                    self.add_folder_paths(set_name, path, subsets)
-                    for element in subsets:
-                        if self.system[element]:
-                            self.add_folder_paths(
-                                element, self.paths[element]["folder"]
-                            )
-
-    def add_folder_paths(self, set_name, path, subsets=None):
-        """Add file paths of element to paths dictionary.
-
-        :param set_name: name of set
-        :param path: path to folder
-        :param subsets: list of subsets
-        """
-        if subsets is None:
-            subsets = []
-        for element in next(os.walk(path))[1]:
-            if element not in subsets:
-                self.paths[set_name][element] = dict()
-                self.paths[set_name][element]["folder"] = os.path.join(path, element)
-                sub_path = os.path.join(path, element)
-                for file in next(os.walk(sub_path))[2]:
-                    self.paths[set_name][element][file] = os.path.join(sub_path, file)
-                # add element paths to parent sets
-                parent_sets = self._find_parent_set(self.analysis.subsets, set_name)
-                for parent_set in parent_sets:
-                    self.paths[parent_set][element] = self.paths[set_name][element]
-            else:
-                self.paths[element] = dict()
-                self.paths[element]["folder"] = os.path.join(path, element)
-
-    def _find_parent_set(self, dictionary, subset, path=None):
-        """This method finds the parent sets of a subset.
-
-        :param dictionary: dictionary of subsets
-        :param subset: subset to find parent sets of
-        :param path: path to subset
-        :return: list of parent sets
-        """
-        if path is None:
-            path = []
-        for key, value in dictionary.items():
-            current_path = path + [key]
-            if subset in dictionary[key]:
-                return current_path
-            elif isinstance(value, dict):
-                result = self._find_parent_set(value, subset, current_path)
-                if result:
-                    return result
-        return []
 
     def add_elements(self):
         """Set up the parameters, variables and constraints of the carriers."""
