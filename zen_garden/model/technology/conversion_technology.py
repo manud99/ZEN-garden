@@ -15,9 +15,11 @@ from linopy.expressions import LinearExpression
 from zen_garden.utils import align_like
 
 from ..element import GenericRule
+from ..registry import register_element_class
 from .technology import Technology
 
 
+@register_element_class
 class ConversionTechnology(Technology):
     """Class defining conversion technologies."""
 

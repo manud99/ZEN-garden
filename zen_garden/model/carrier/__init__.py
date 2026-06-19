@@ -1,7 +1,5 @@
-"""Function that loads all classes and subclasses of carrier directory."""
+"""Carrier model package."""
 
-from pathlib import Path
+from .carrier import Carrier
 
-# register the subclasses
-modules = Path(__file__).parent.glob("*.py")
-__all__ = [f.stem for f in modules if f.is_file()]
+__all__ = ["Carrier"]

@@ -1,8 +1,5 @@
-import importlib
-import pkgutil
-
-from . import model, wrapper
-from .model.element import Element
+from . import wrapper
+from .model.registry import get_registered_element_classes
 from .optimization_setup import OptimizationSetup
 from .postprocess.comparisons import (
     compare_configs,
@@ -11,7 +8,7 @@ from .postprocess.comparisons import (
 )
 from .postprocess.results.results import Results
 from .runner import run
-from .utils import download_example_dataset, get_inheritors
+from .utils import download_example_dataset
 
 __all__ = [
     "run",
@@ -24,11 +21,4 @@ __all__ = [
     "wrapper",
 ]
 
-for _, module, _ in pkgutil.walk_packages(model.__path__, prefix=f"{model.__name__}."):
-    importlib.import_module(module)
-
-# set the element classes of the EnergySystem class
-inheritors = get_inheritors(Element)
-OptimizationSetup.dict_element_classes.update(
-    {klass.__name__: klass for klass in inheritors}
-)
+OptimizationSetup.dict_element_classes.update(get_registered_element_classes())

@@ -10,9 +10,11 @@ from zen_garden.utils import linexpr_from_tuple_np
 
 from ..component import IndexSet
 from ..element import Element, GenericRule
+from ..registry import register_element_class
 from .technology import Technology
 
 
+@register_element_class
 class StorageTechnology(Technology):
     """Class defining storage technologies."""
 

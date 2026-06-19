@@ -10,9 +10,11 @@ import pandas as pd
 from zen_garden.utils import align_like
 
 from ..element import GenericRule
+from ..registry import register_element_class
 from .conversion_technology import ConversionTechnology
 
 
+@register_element_class
 class RetrofittingTechnology(ConversionTechnology):
     """Class defining retrofitting technologies."""
 

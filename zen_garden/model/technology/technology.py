@@ -14,8 +14,10 @@ from linopy.expressions import LinearExpression
 
 from ..component import IndexSet, ZenIndex
 from ..element import Element, GenericRule
+from ..registry import register_element_class
 
 
+@register_element_class
 class Technology(Element):
     """Defines parameters, variables and constraints holding for all technologies."""
 

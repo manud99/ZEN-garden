@@ -8,9 +8,11 @@ import xarray as xr
 
 from ..component import IndexSet
 from ..element import Element, GenericRule
+from ..registry import register_element_class
 from .technology import Technology
 
 
+@register_element_class
 class TransportTechnology(Technology):
     # set label
     label = "set_transport_technologies"

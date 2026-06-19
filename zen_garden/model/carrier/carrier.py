@@ -12,8 +12,10 @@ from linopy.expressions import LinearExpression
 
 from ..component import ZenIndex
 from ..element import Element, GenericRule
+from ..registry import register_element_class
 
 
+@register_element_class
 class Carrier(Element):
     """Class defining a generic energy carrier."""
 

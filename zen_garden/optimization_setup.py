@@ -16,10 +16,16 @@ import linopy as lp
 import numpy as np
 import pandas as pd
 
-from zen_garden.model.component import Constraint, IndexSet, Parameter, Variable
-from zen_garden.model.element import Element
-from zen_garden.model.energy_system import EnergySystem
-from zen_garden.model.technology.technology import Technology
+from zen_garden.model import (
+    Constraint,
+    Element,
+    EnergySystem,
+    IndexSet,
+    Parameter,
+    Technology,
+    Variable,
+)
+from zen_garden.model.registry import get_registered_element_classes
 from zen_garden.preprocess.parameter_change_log import parameter_change_log
 from zen_garden.preprocess.time_series_aggregation import TimeSeriesAggregation
 from zen_garden.preprocess.unit_handling import Scaling
@@ -36,8 +42,8 @@ class OptimizationSetup(object):
     method to solve the optimization problem.
     """
 
-    # dict of element classes, this dict is filled in the __init__ of the package
-    dict_element_classes = {}
+    # dict of element classes, populated from the explicit registry
+    dict_element_classes = get_registered_element_classes()
 
     def __init__(self, config, scenario_dict: dict, input_data_checks):
         """Setup optimization of the energy system.
