@@ -32,6 +32,7 @@ class EnergySystem:
         self._name = "EnergySystem"
         # set attributes
         self.optimization_setup = optimization_setup
+        self.context = optimization_setup.context
         # quick access
         self.system = self.optimization_setup.system
         # empty dict of technologies of carrier
@@ -49,7 +50,7 @@ class EnergySystem:
 
         # set input path
         folder_label = "energy_system"
-        self.input_path = Path(self.optimization_setup.paths[folder_label]["folder"])
+        self.input_path = Path(self.context.paths[folder_label]["folder"])
 
         # create UnitHandling object
         self.unit_handling = UnitHandling(
@@ -65,6 +66,7 @@ class EnergySystem:
             solver=self.optimization_setup.solver,
             energy_system=self,
             unit_handling=self.unit_handling,
+            context=self.context,
         )
         # initialize empty set_carriers list
         self.set_carriers = []
@@ -74,7 +76,7 @@ class EnergySystem:
     def store_input_data(self):
         """Retrieves and stores input data for EnergySystem as attributes."""
         # store scenario dict
-        self.data_input.scenario_dict = self.optimization_setup.scenario_dict
+        self.data_input.scenario_dict = self.context.scenario_dict
         # in class <EnergySystem>, all sets are constructed
         self.set_nodes = self.data_input.extract_locations()
         self.set_nodes_on_edges = self.calculate_edges_from_nodes()

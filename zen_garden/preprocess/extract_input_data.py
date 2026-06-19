@@ -23,6 +23,7 @@ class DataInput:
         energy_system,
         unit_handling,
         optimization_setup=None,
+        context=None,
     ):
         """Data input object to extract input data.
 
@@ -40,6 +41,7 @@ class DataInput:
         self.energy_system = energy_system
         self.scenario_dict = None
         self.unit_handling = unit_handling
+        self.context = context or getattr(optimization_setup, "context", None)
         # extract folder path
         self.folder_path = self.element.input_path
         # get names of indices
@@ -225,7 +227,11 @@ class DataInput:
                 )
 
         # check for duplicate indices
-        input_checks = self.energy_system.optimization_setup.input_data_checks
+        input_checks = (
+            self.context.input_data_checks
+            if self.context is not None
+            else self.energy_system.optimization_setup.input_data_checks
+        )
         df_input = input_checks.check_duplicate_indices(
             df_input=df_input, file_name=file_name, folder_path=self.folder_path
         )
@@ -466,7 +472,9 @@ class DataInput:
         """
         if attribute_name not in attribute_dict:
             parameter_change_log = (
-                self.energy_system.optimization_setup.parameter_change_log
+                self.context.parameter_change_log
+                if self.context is not None
+                else self.energy_system.optimization_setup.parameter_change_log
             )
 
             # The attribute is not found because of an update
@@ -585,14 +593,24 @@ class DataInput:
                             time_steps,
                         )
                     try:
-                        self.optimization_setup.year_specific_ts[i][
-                            (self.element._name, file_name)
-                        ] = (df_output_specific * scenario_factor)
+                        target_year_specific_ts = (
+                            self.context.year_specific_ts
+                            if self.context is not None
+                            else self.optimization_setup.year_specific_ts
+                        )
+                        target_year_specific_ts[i][(self.element._name, file_name)] = (
+                            df_output_specific * scenario_factor
+                        )
                     except Exception:
-                        self.optimization_setup.year_specific_ts[i] = {}
-                        self.optimization_setup.year_specific_ts[i][
-                            (self.element._name, file_name)
-                        ] = (df_output_specific * scenario_factor)
+                        target_year_specific_ts = (
+                            self.context.year_specific_ts
+                            if self.context is not None
+                            else self.optimization_setup.year_specific_ts
+                        )
+                        target_year_specific_ts[i] = {}
+                        target_year_specific_ts[i][(self.element._name, file_name)] = (
+                            df_output_specific * scenario_factor
+                        )
 
     def extract_yearly_variation(self, file_name, index_sets):
         """Reads the yearly variation of a time dependent quantity.
@@ -689,7 +707,11 @@ class DataInput:
                 return set_nodes_config
         else:
             set_edges_input = self.read_input_csv("set_edges")
-            input_checks = self.energy_system.optimization_setup.input_data_checks
+            input_checks = (
+                self.context.input_data_checks
+                if self.context is not None
+                else self.energy_system.optimization_setup.input_data_checks
+            )
             input_checks.check_single_directed_edges(set_edges_input=set_edges_input)
             if set_edges_input is not None:
                 set_edges = set_edges_input[

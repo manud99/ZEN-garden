@@ -10,6 +10,7 @@ from .component import (
     ZenIndex,
     ZenSet,
 )
+from .context import ModelContext
 from .element import Element, GenericRule
 from .energy_system import EnergySystem
 from .technology import (
@@ -33,6 +34,7 @@ __all__ = [
     "EnergySystem",
     "Element",
     "GenericRule",
+    "ModelContext",
     "Technology",
     "ConversionTechnology",
     "StorageTechnology",

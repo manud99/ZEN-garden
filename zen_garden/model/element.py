@@ -8,7 +8,6 @@ import itertools
 import logging
 import os
 import time
-from pathlib import Path
 
 import linopy as lp
 import pandas as pd
@@ -36,8 +35,13 @@ class Element:
         self._name = element
         # optimization setup
         self.optimization_setup = optimization_setup
+        self.context = getattr(optimization_setup, "context", None)
+        if self.context is None:
+            raise AttributeError("Optimization setup does not provide a model context")
         # energy system
-        self.energy_system = optimization_setup.energy_system
+        self.energy_system = (
+            self.context.energy_system or optimization_setup.energy_system
+        )
         # set if aggregated
         self.aggregated = False
         # get input path
@@ -45,37 +49,24 @@ class Element:
         # create DataInput object
         self.data_input = DataInput(
             element=self,
-            system=self.optimization_setup.system,
-            analysis=self.optimization_setup.analysis,
-            solver=self.optimization_setup.solver,
+            system=self.context.system,
+            analysis=self.context.analysis,
+            solver=self.context.solver,
             energy_system=self.energy_system,
             unit_handling=self.energy_system.unit_handling,
-            optimization_setup=self.optimization_setup,
+            context=self.context,
         )
         # dict to save the parameter units element-wise and to save them in the results
         self.units = {}
 
     def get_input_path(self):
         """Get input path where input data is stored input_path."""
-        # get technology type
-        class_label = self.label
-        # get path dictionary
-        paths = self.optimization_setup.paths
-        # check if class is a subset
-        if class_label not in paths.keys():
-            subsets = self.optimization_setup.analysis.subsets
-            # iterate through subsets and check if class belongs to any of the subsets
-            for set_name, subsets_list in subsets.items():
-                if class_label in subsets_list:
-                    class_label = set_name
-                    break
-        # get input path for current class_label
-        self.input_path = Path(paths[class_label][self.name]["folder"])
+        self.input_path = self.context.get_input_folder(self.label, self.name)
 
     def store_scenario_dict(self):
         """Stores scenario dict in each data input object."""
         # store scenario dict
-        self.data_input.scenario_dict = self.optimization_setup.scenario_dict
+        self.data_input.scenario_dict = self.context.scenario_dict
 
     ### --- classmethods to construct sets, parameters, variables, and constraints,
     #  corresponding to Element --- ###

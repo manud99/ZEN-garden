@@ -26,6 +26,7 @@ from zen_garden.model import (
     Technology,
     Variable,
 )
+from zen_garden.model.context import ModelContext
 from zen_garden.model.registry import get_registered_element_classes
 from zen_garden.preprocess.parameter_change_log import parameter_change_log
 from zen_garden.preprocess.time_series_aggregation import TimeSeriesAggregation
@@ -75,8 +76,20 @@ class OptimizationSetup(object):
         self.path_data = self.bootstrapper.path_data
         self.paths = self.bootstrapper.paths
         self.element_list = self.bootstrapper.element_list
+        self.year_specific_ts = {}
+        self.context = ModelContext.from_setup(
+            analysis=self.analysis,
+            system=self.system,
+            solver=self.solver,
+            paths=self.paths,
+            path_data=self.path_data,
+            element_classes=self.dict_element_classes,
+            input_data_checks=self.input_data_checks,
+            year_specific_ts=self.year_specific_ts,
+        )
         # dict to update elements according to scenario
-        self.scenario_dict = ScenarioDict(scenario_dict, self, self.paths)
+        self.scenario_dict = ScenarioDict(scenario_dict, self.context)
+        self.context = self.context.with_updates(scenario_dict=self.scenario_dict)
         # check if all needed data inputs for the chosen technologies exist
         # remove non-existent inputs
         self.input_data_checks.check_existing_technology_data()
@@ -84,6 +97,9 @@ class OptimizationSetup(object):
         self.dict_elements = defaultdict(list)
         # read the parameter change log
         self.parameter_change_log = parameter_change_log()
+        self.context = self.context.with_updates(
+            parameter_change_log=self.parameter_change_log
+        )
         # optimization model
         self.model = None
         # the components
@@ -92,14 +108,13 @@ class OptimizationSetup(object):
         self.constraints = None
         self.sets = None
 
-        # initiate dictionary for storing extra year data
-        self.year_specific_ts = {}
-
         # step of optimization horizon
         self.step_horizon = 0
 
         # Init the energy system
         self.energy_system = EnergySystem(optimization_setup=self)
+        self.context = self.context.with_updates(energy_system=self.energy_system)
+        self.energy_system.context = self.context
 
         # add Elements to optimization
         self.add_elements()

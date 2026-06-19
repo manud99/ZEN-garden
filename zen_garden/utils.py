@@ -609,23 +609,21 @@ class ScenarioDict(dict):
     _special_elements = ["base_scenario", "sub_folder", "param_map"]
     _setting_elements = ["system", "analysis", "solver"]
 
-    def __init__(self, init_dict, optimization_setup, paths):
+    def __init__(self, init_dict, context):
         """Initializes the dictionary from a normal dictionary.
 
         :param init_dict: The dictionary to initialize from
         :param optimization_setup: The optimization setup corresponding to the scenario
         :param paths: The paths to the elements
         """
-        self.element_classes = reversed(
-            list(optimization_setup.dict_element_classes.values())
-        )
+        self.element_classes = reversed(list(context.element_classes.values()))
 
         # set the attributes and expand the dict
-        self.system = optimization_setup.system
-        self.analysis = optimization_setup.analysis
-        self.solver = optimization_setup.solver
+        self.system = context.system
+        self.analysis = context.analysis
+        self.solver = context.solver
         self.init_dict = init_dict
-        self.paths = paths
+        self.paths = context.paths
         expanded_dict = self.expand_subsets(init_dict)
         self.validate_dict(expanded_dict)
         self.dict = expanded_dict
