@@ -9,8 +9,9 @@ import numpy as np
 import pandas as pd
 from scipy.stats import linregress
 
-from zen_garden.preprocess.input_attribute_resolver import InputAttributeResolver
-from zen_garden.preprocess.input_repository import InputRepository
+from ..model.context import ModelContext
+from .input_attribute_resolver import InputAttributeResolver
+from .input_repository import InputRepository
 
 
 class DataInput:
@@ -25,7 +26,7 @@ class DataInput:
         energy_system,
         unit_handling,
         optimization_setup=None,
-        context=None,
+        context: ModelContext | None = None,
     ):
         """Data input object to extract input data.
 
@@ -194,9 +195,7 @@ class DataInput:
             df_input, time_steps, file_name, index_name_list
         )
 
-        assert df_input.columns is not None, (
-            f"Input file '{file_name}' has " "no columns"
-        )
+        assert df_input.columns is not None, f"Input file '{file_name}' has no columns"
         # set index by index_name_list
         missing_index = list(
             set(index_name_list)
@@ -431,9 +430,9 @@ class DataInput:
         :param subelement: string specifying dependent element
         :param df_output_generic: original/generic time series data (base case)
         """
-        target_year_specific_ts = getattr(self.context, "year_specific_ts", None) or (
-            self.optimization_setup.year_specific_ts
-        )
+        target_year_specific_ts = getattr(self.context, "year_specific_ts", None)
+        if target_year_specific_ts is None and self.optimization_setup is not None:
+            target_year_specific_ts = self.optimization_setup.year_specific_ts
         # years of optimization model
         years = [
             str(year)
